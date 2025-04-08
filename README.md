@@ -23,20 +23,37 @@ This action does not export any environment variables.
 ## Example usage
 
 ```yaml
-      # Example using this action
-      - name: Get changed paths
-        uses: LerianStudio/github-actions-changed-paths@main
-        with:
-          filter-string: components
+  name: Run per changed path
 
-      # Example using the matrix output
-      - name: Run for each changed path
-        uses: actions/checkout@v4
+  on:
+    push:
+      branches: [main]
 
-      - run: echo "Changed path: ${{ matrix.path }}"
-        strategy:
-          matrix:
-            path: ${{ fromJson(needs.get-changed-paths.outputs.matrix) }}
+  jobs:
+    # Example using this action
+    get-changed-files:
+      runs-on: ubuntu-latest
+      outputs:
+        matrix: ${{ steps.changed-paths.outputs.matrix }}
+      steps:
+        - name: Get changed paths
+          id: changed-paths
+          uses: LerianStudio/github-actions-changed-paths@main
+          with:
+            filter_string: components
+
+    # Example using the matrix output
+    run-per-path:
+      needs: get-changed-files
+      runs-on: ubuntu-latest
+      if: needs.get-changed-files.outputs.matrix != '[]'
+      strategy:
+        matrix:
+          path: ${{ fromJson(needs.get-changed-files.outputs.matrix) }}
+      steps:
+        - name: Echo changed path
+          run: echo "${{ matrix.path }}"
+
 ```
 
 ## Requirements
