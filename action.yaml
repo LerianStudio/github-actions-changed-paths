@@ -1,0 +1,56 @@
+name: 'Get changed paths'
+
+inputs:
+  filter_string:
+    required: false
+    description: 'Optional. Filters changed paths to only include those containing this string'
+
+outputs:
+  matrix:
+    description: 'JSON array of changed directories'
+    value: ${{ steps.dirs.outputs.matrix }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Get changed files
+      id: changed
+      shell: bash
+      run: |
+        FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
+        printf "files<<EOF\n%s\nEOF\n" "$FILES" >> "$GITHUB_OUTPUT"
+
+    - name: Extract changed directories
+      id: dirs
+      shell: bash
+      run: |
+        FILES="${{ steps.changed.outputs.files }}"
+        FILTER_STRING="${{ inputs.filter_string || '' }}"
+
+        if [[ -z "$FILES" ]]; then
+          echo "No files changed."
+          printf "matrix=[]\n" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        # Extract unique directories (one per line)
+        DIRS=$(echo "$FILES" | xargs -n1 dirname | sort -u)
+
+        # Apply filter if provided
+        if [[ -n "$FILTER_STRING" ]]; then
+          echo "🔍 Filtering directories with string: $FILTER_STRING"
+          DIRS=$(echo "$DIRS" | grep "$FILTER_STRING" || true)
+        fi
+
+        # Convert to compact JSON array
+        DIRS_JSON=$(echo "$DIRS" | jq -Rc . | jq -sc .)
+
+        echo "✅ Changed directories matrix: $DIRS_JSON"
+
+        # Save to GitHub output
+        printf "matrix=%s\n" "$DIRS_JSON" >> "$GITHUB_OUTPUT"
