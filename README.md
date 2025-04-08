@@ -8,7 +8,7 @@ GitHub action used to get the changed paths between two commits or refs.
 
 | Name           | Description                                                                 |
 |----------------|-----------------------------------------------------------------------------|
-| `filter-string` | (Optional) Filters changed paths to only include those containing this string (e.g., `infra`, `frontend`). |
+| `filter_string` | (Optional) Filters changed paths to only include those containing this string (e.g., `infra`, `frontend`). |
 
 ## Outputs
 
