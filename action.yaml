@@ -51,12 +51,11 @@ runs:
           DIRS=$(echo "$DIRS" | cut -d'/' -f-"$PATH_LEVEL")
         fi
 
-        # Filter paths if filter_paths is a non-empty JSON array
         if [[ "$FILTER_PATHS" != "" && "$FILTER_PATHS" != "[]" ]]; then
           echo "Filtering directories using list: $FILTER_PATHS"
           FILTERED=""
           while read -r DIR; do
-            for FILTER in $(echo "$FILTER_PATHS" | jq -r '.[]'); do
+            jq -r '.[]' <<< "$FILTER_PATHS" | while read -r FILTER; do
               if [[ "$DIR" == "$FILTER"* ]]; then
                 FILTERED+="$DIR"$'\n'
                 break
