@@ -7,6 +7,9 @@ inputs:
   path_level:
     required: false
     description: 'Optional. Limits the path to the first N segments (e.g., 2 -> "components/transactions")'
+  get_app_name:
+    required: false
+    description: 'If true, outputs a matrix of objects with app name and working directory. Otherwise, outputs a list of changed directories.'
 
 outputs:
   matrix:
@@ -35,6 +38,7 @@ runs:
         FILES="${{ steps.changed.outputs.files }}"
         FILTER_PATHS="${{ inputs.filter_paths || '' }}"
         PATH_LEVEL="${{ inputs.path_level || '' }}"
+        GET_APP_NAME="${{ inputs.get_app_name || 'false' }}"
 
         if [[ -z "$FILES" ]]; then
           echo "No files changed."
@@ -69,11 +73,38 @@ runs:
             done
           done <<< "$DIRS"
 
+          # If nothing matched, exit
+          if [[ -z "$FILTERED" ]]; then
+            echo "No matching directories found after filtering."
+            printf "matrix=[]\n" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           DIRS="$FILTERED"
         fi
 
-        # Deduplicate and convert to compact JSON array, filtering out empty lines
-        DIRS_JSON=$(echo "$DIRS" | grep -v '^$' | sort -u | jq -Rc . | jq -sc .)
+        # Deduplicate and remove empty lines
+        DIRS=$(echo "$DIRS" | grep -v '^$' | sort -u)
 
-        echo "Changed directories matrix: $DIRS_JSON"
-        printf "matrix=%s\n" "$DIRS_JSON" >> "$GITHUB_OUTPUT"
+        if [[ "$GET_APP_NAME" == "true" ]]; then
+          echo "Generating object matrix with app names"
+          MATRIX="["
+          FIRST=true
+          while read -r DIR; do
+            APP_NAME="midaz-$(echo "$DIR" | cut -d'/' -f2)"
+            ENTRY="{\"name\":\"$APP_NAME\",\"working_dir\":\"$DIR\"}"
+            if $FIRST; then
+              MATRIX+="$ENTRY"
+              FIRST=false
+            else
+              MATRIX+=",$ENTRY"
+            fi
+          done <<< "$DIRS"
+          MATRIX+="]"
+        else
+          # Default: return just an array of paths
+          MATRIX=$(echo "$DIRS" | jq -Rc . | jq -sc .)
+        fi
+
+        echo "Changed directories matrix: $MATRIX"
+        printf "matrix=%s\n" "$MATRIX" >> "$GITHUB_OUTPUT"
