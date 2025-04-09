@@ -72,8 +72,8 @@ runs:
           DIRS="$FILTERED"
         fi
 
-        # Deduplicate and convert to compact JSON array
-        DIRS_JSON=$(echo "$DIRS" | sort -u | jq -Rc . | jq -sc .)
+        # Deduplicate and convert to compact JSON array, filtering out empty lines
+        DIRS_JSON=$(echo "$DIRS" | grep -v '^$' | sort -u | jq -Rc . | jq -sc .)
 
         echo "Changed directories matrix: $DIRS_JSON"
         printf "matrix=%s\n" "$DIRS_JSON" >> "$GITHUB_OUTPUT"
