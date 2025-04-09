@@ -1,9 +1,9 @@
 name: 'Get changed paths'
 
 inputs:
-  filter_string:
+  filter_paths:
     required: false
-    description: 'Optional. Filters changed paths to only include those containing this string'
+    description: 'Optional. JSON array of path prefixes to filter results (e.g., ["components/mdz", "components/transaction"])'
   path_level:
     required: false
     description: 'Optional. Limits the path to the first N segments (e.g., 2 -> "components/transactions")'
@@ -33,7 +33,7 @@ runs:
       shell: bash
       run: |
         FILES="${{ steps.changed.outputs.files }}"
-        FILTER_STRING="${{ inputs.filter_string || '' }}"
+        FILTER_PATHS="${{ inputs.filter_paths || '' }}"
         PATH_LEVEL="${{ inputs.path_level || '' }}"
 
         if [[ -z "$FILES" ]]; then
@@ -42,25 +42,32 @@ runs:
           exit 0
         fi
 
-        # Extract unique directories
+        # Get directory for each file
         DIRS=$(echo "$FILES" | xargs -n1 dirname)
 
         # Trim to first N path segments if specified
         if [[ -n "$PATH_LEVEL" ]]; then
-          echo "🔢 Trimming paths to first $PATH_LEVEL segments"
+          echo "Trimming paths to first $PATH_LEVEL segments"
           DIRS=$(echo "$DIRS" | cut -d'/' -f-"$PATH_LEVEL")
         fi
 
-        # Apply filter if provided
-        if [[ -n "$FILTER_STRING" ]]; then
-          echo "🔍 Filtering directories with string: $FILTER_STRING"
-          DIRS=$(echo "$DIRS" | grep "$FILTER_STRING" || true)
+        # Filter paths if filter_paths is a non-empty JSON array
+        if [[ "$FILTER_PATHS" != "" && "$FILTER_PATHS" != "[]" ]]; then
+          echo "Filtering directories using list: $FILTER_PATHS"
+          FILTERED=""
+          while read -r DIR; do
+            for FILTER in $(echo "$FILTER_PATHS" | jq -r '.[]'); do
+              if [[ "$DIR" == "$FILTER"* ]]; then
+                FILTERED+="$DIR"$'\n'
+                break
+              fi
+            done
+          done <<< "$DIRS"
+          DIRS="$FILTERED"
         fi
 
-        # Convert to JSON array
+        # Deduplicate and convert to compact JSON array
         DIRS_JSON=$(echo "$DIRS" | sort -u | jq -Rc . | jq -sc .)
 
-        echo "✅ Changed directories matrix: $DIRS_JSON"
-
-        # Save to GitHub output
+        echo "Changed directories matrix: $DIRS_JSON"
         printf "matrix=%s\n" "$DIRS_JSON" >> "$GITHUB_OUTPUT"
