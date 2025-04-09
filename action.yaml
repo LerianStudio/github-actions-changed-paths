@@ -4,6 +4,9 @@ inputs:
   filter_string:
     required: false
     description: 'Optional. Filters changed paths to only include those containing this string'
+  path_level:
+    required: false
+    description: 'Optional. Limits the path to the first N segments (e.g., 2 -> "components/transactions")'
 
 outputs:
   matrix:
@@ -31,6 +34,7 @@ runs:
       run: |
         FILES="${{ steps.changed.outputs.files }}"
         FILTER_STRING="${{ inputs.filter_string || '' }}"
+        PATH_LEVEL="${{ inputs.path_level || '' }}"
 
         if [[ -z "$FILES" ]]; then
           echo "No files changed."
@@ -38,8 +42,14 @@ runs:
           exit 0
         fi
 
-        # Extract unique directories (one per line)
-        DIRS=$(echo "$FILES" | xargs -n1 dirname | sort -u)
+        # Extract unique directories
+        DIRS=$(echo "$FILES" | xargs -n1 dirname)
+
+        # Trim to first N path segments if specified
+        if [[ -n "$PATH_LEVEL" ]]; then
+          echo "🔢 Trimming paths to first $PATH_LEVEL segments"
+          DIRS=$(echo "$DIRS" | cut -d'/' -f-"$PATH_LEVEL")
+        fi
 
         # Apply filter if provided
         if [[ -n "$FILTER_STRING" ]]; then
@@ -47,8 +57,8 @@ runs:
           DIRS=$(echo "$DIRS" | grep "$FILTER_STRING" || true)
         fi
 
-        # Convert to compact JSON array
-        DIRS_JSON=$(echo "$DIRS" | jq -Rc . | jq -sc .)
+        # Convert to JSON array
+        DIRS_JSON=$(echo "$DIRS" | sort -u | jq -Rc . | jq -sc .)
 
         echo "✅ Changed directories matrix: $DIRS_JSON"
 

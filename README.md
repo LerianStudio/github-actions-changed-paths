@@ -4,11 +4,10 @@ GitHub action used to get the changed paths between two commits or refs.
 
 **Organization:** LerianStudio
 
-## Inputs
-
-| Name           | Description                                                                 |
-|----------------|-----------------------------------------------------------------------------|
-| `filter_string` | (Optional) Filters changed paths to only include those containing this string (e.g., `infra`, `frontend`). |
+| Name            | Required | Description                                                                 |
+|-----------------|----------|-----------------------------------------------------------------------------|
+| `filter_string` | No       | Optional. Filters changed paths to only include those containing this string. |
+| `path_level`    | No       | Optional. Limits the path to the first N segments (e.g., 2 → `components/transactions`). |
 
 ## Outputs
 
@@ -41,6 +40,7 @@ This action does not export any environment variables.
           uses: LerianStudio/github-actions-changed-paths@main
           with:
             filter_string: components
+            path_level: 2
 
     # Example using the matrix output
     run-per-path:
