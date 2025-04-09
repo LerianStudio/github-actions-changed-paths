@@ -4,10 +4,13 @@ GitHub action used to get the changed paths between two commits or refs.
 
 **Organization:** LerianStudio
 
+## Inputs
+
 | Name            | Required | Description                                                                 |
 |-----------------|----------|-----------------------------------------------------------------------------|
-| `filter_paths` | No       | Optional. A list of path prefixes to filter results. |
-| `path_level`    | No       | Optional. Limits the path to the first N segments. |
+| `filter_paths`  | No       | Optional. A list of path prefixes to filter results. One per line.          |
+| `path_level`    | No       | Optional. Limits the output path to the first N segments.                   |
+| `get_app_name`  | No       | Optional. If true, outputs a matrix with `name` and `working_dir` fields for each app. Assumes second path segment is the app name. |
 
 ## Outputs
 
@@ -42,6 +45,7 @@ This action does not export any environment variables.
             filter_paths: |-
               components/onboarding
               components/transaction
+            get_app_name: true
             path_level: 2
 
     # Example using the matrix output
