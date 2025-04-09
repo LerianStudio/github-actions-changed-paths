@@ -51,17 +51,29 @@ runs:
           DIRS=$(echo "$DIRS" | cut -d'/' -f-"$PATH_LEVEL")
         fi
 
+        # Filter paths if filter_paths is a non-empty JSON array
         if [[ "$FILTER_PATHS" != "" && "$FILTER_PATHS" != "[]" ]]; then
           echo "Filtering directories using list: $FILTER_PATHS"
+
+          # Try to parse JSON — if it fails, attempt to quote items to recover
+          if ! echo "$FILTER_PATHS" | jq empty >/dev/null 2>&1; then
+            echo "⚠️ Provided filter_paths is not valid JSON, attempting to recover..."
+            FILTER_PATHS=$(echo "$FILTER_PATHS" | sed 's/\([^[,[:space:]]\+\)/"\1"/g' | sed 's/^/[/;s/$/]/')
+          fi
+
           FILTERED=""
           while read -r DIR; do
-            jq -r '.[]' <<< "$FILTER_PATHS" | while read -r FILTER; do
+            MATCHED=false
+            while read -r FILTER; do
               if [[ "$DIR" == "$FILTER"* ]]; then
                 FILTERED+="$DIR"$'\n'
+                MATCHED=true
                 break
               fi
-            done
+            done < <(jq -r '.[]' <<< "$FILTER_PATHS")
+            $MATCHED && continue
           done <<< "$DIRS"
+
           DIRS="$FILTERED"
         fi
 
