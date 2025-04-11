@@ -91,7 +91,7 @@ runs:
           MATRIX="["
           FIRST=true
           while read -r DIR; do
-            APP_NAME="midaz-$(echo "$DIR" | cut -d'/' -f2)"
+            APP_NAME="$(echo "$DIR" | cut -d'/' -f2)"
             ENTRY="{\"name\":\"$APP_NAME\",\"working_dir\":\"$DIR\"}"
             if $FIRST; then
               MATRIX+="$ENTRY"
