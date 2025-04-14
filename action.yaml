@@ -10,6 +10,9 @@ inputs:
   get_app_name:
     required: false
     description: 'If true, outputs a matrix of objects with app name and working directory. Otherwise, outputs a list of changed directories.'
+  app_name_prefix:
+    required: false
+    description: 'Optional. If set and get_app_name is true, this prefix will be added to each app name.'
 
 outputs:
   matrix:
@@ -39,6 +42,7 @@ runs:
         FILTER_PATHS="${{ inputs.filter_paths || '' }}"
         PATH_LEVEL="${{ inputs.path_level || '' }}"
         GET_APP_NAME="${{ inputs.get_app_name || 'false' }}"
+        APP_NAME_PREFIX="${{ inputs.app_name_prefix || '' }}"
 
         if [[ -z "$FILES" ]]; then
           echo "No files changed."
@@ -91,7 +95,11 @@ runs:
           MATRIX="["
           FIRST=true
           while read -r DIR; do
-            APP_NAME="$(echo "$DIR" | cut -d'/' -f2)"
+            if [[ -n "$APP_NAME_PREFIX" ]]; then
+              APP_NAME="${APP_NAME_PREFIX}-$(echo "$DIR" | cut -d'/' -f2)"
+            else
+              APP_NAME="$(echo "$DIR" | cut -d'/' -f2)"
+            fi
             ENTRY="{\"name\":\"$APP_NAME\",\"working_dir\":\"$DIR\"}"
             if $FIRST; then
               MATRIX+="$ENTRY"
