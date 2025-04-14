@@ -48,6 +48,7 @@ This action does not export any environment variables.
               components/transaction
             get_app_name: true
             path_level: 2
+            app_name_prefix: midaz
 
     # Example using the matrix output
     run-per-path:
