@@ -11,6 +11,7 @@ GitHub action used to get the changed paths between two commits or refs.
 | `filter_paths`  | No       | Optional. A list of path prefixes to filter results. One per line.          |
 | `path_level`    | No       | Optional. Limits the output path to the first N segments.                   |
 | `get_app_name`  | No       | Optional. If true, outputs a matrix with `name` and `working_dir` fields for each app. Assumes second path segment is the app name. |
+| `app_name_prefix` | No | Optional. Adds a prefix to the generated app names when `get_app_name` is enabled. Ignored if `get_app_name` is false. |
 
 ## Outputs
 
@@ -47,6 +48,7 @@ This action does not export any environment variables.
               components/transaction
             get_app_name: true
             path_level: 2
+            app_name_prefix: midaz
 
     # Example using the matrix output
     run-per-path:
