@@ -31,7 +31,19 @@ runs:
       id: changed
       shell: bash
       run: |
-        FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
+        if [[ "${{ github.event.before }}" == "0000000000000000000000000000000000000000" ]] || [[ -z "${{ github.event.before }}" ]]; then
+          # For tags or when before is not available, compare with the previous commit
+          PREV_COMMIT=$(git rev-parse HEAD^)
+          if [[ $? -eq 0 ]]; then
+            FILES=$(git diff --name-only $PREV_COMMIT HEAD)
+          else
+            # Fallback for first commit
+            FILES=$(git ls-tree -r --name-only HEAD)
+          fi
+        else
+          # Normal case - diff between commits
+          FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
+        fi
         printf "files<<EOF\n%s\nEOF\n" "$FILES" >> "$GITHUB_OUTPUT"
 
     - name: Extract changed directories
