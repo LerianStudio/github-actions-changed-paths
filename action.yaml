@@ -102,7 +102,9 @@ runs:
               # Skip empty filters (from trailing newlines in YAML)
               [[ -z "$FILTER" ]] && continue
               if [[ "$DIR" == "$FILTER"* ]]; then
-                FILTERED+="$DIR"$'\n'
+                # Use the FILTER path (not the full DIR) to ensure consistent mapping
+                # This way components/application/foo/bar becomes components/application
+                FILTERED+="$FILTER"$'\n'
                 break
               fi
             done
