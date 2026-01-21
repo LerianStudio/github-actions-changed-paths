@@ -16,6 +16,10 @@ inputs:
   app_name_overrides:
     required: false
     description: 'Optional. Newline-separated list of explicit app name mappings in "path:name" format. Use "path:" for prefix-only (no suffix). Overrides default segment extraction for matched paths.'
+  normalize_to_filter:
+    required: false
+    default: 'false'
+    description: 'If true, uses the filter path as working_dir (e.g., components/app/cmd becomes components/app). Set to false to keep the actual trimmed directory path.'
 
 outputs:
   matrix:
@@ -59,6 +63,7 @@ runs:
         GET_APP_NAME="${{ inputs.get_app_name || 'false' }}"
         APP_NAME_PREFIX="${{ inputs.app_name_prefix || '' }}"
         APP_NAME_OVERRIDES="${{ inputs.app_name_overrides || '' }}"
+        NORMALIZE_TO_FILTER="${{ inputs.normalize_to_filter || 'false' }}"
 
         # Parse app_name_overrides into associative array
         declare -A NAME_OVERRIDES
@@ -102,9 +107,13 @@ runs:
               # Skip empty filters (from trailing newlines in YAML)
               [[ -z "$FILTER" ]] && continue
               if [[ "$DIR" == "$FILTER"* ]]; then
-                # Use the FILTER path (not the full DIR) to ensure consistent mapping
-                # This way components/application/foo/bar becomes components/application
-                FILTERED+="$FILTER"$'\n'
+                if [[ "$NORMALIZE_TO_FILTER" == "true" ]]; then
+                  # Use filter path as working_dir (normalizes deeper paths to filter)
+                  FILTERED+="$FILTER"$'\n'
+                else
+                  # Keep actual DIR path (PATH_LEVEL already handles truncation)
+                  FILTERED+="$DIR"$'\n'
+                fi
                 break
               fi
             done
