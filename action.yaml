@@ -99,6 +99,8 @@ runs:
           FILTERED=""
           while read -r DIR; do
             for FILTER in "${FILTER_ARRAY[@]}"; do
+              # Skip empty filters (from trailing newlines in YAML)
+              [[ -z "$FILTER" ]] && continue
               if [[ "$DIR" == "$FILTER"* ]]; then
                 FILTERED+="$DIR"$'\n'
                 break
