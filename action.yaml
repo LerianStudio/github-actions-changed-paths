@@ -3,7 +3,7 @@ name: 'Get changed paths'
 inputs:
   filter_paths:
     required: false
-    description: 'Optional. JSON array of path prefixes to filter results (e.g., ["components/mdz", "components/transaction"])'
+    description: 'Optional. Newline-separated list of path prefixes to filter results (e.g., "components/mdz", "components/transaction")'
   path_level:
     required: false
     description: 'Optional. Limits the path to the first N segments (e.g., 2 -> "components/transactions")'
@@ -13,6 +13,9 @@ inputs:
   app_name_prefix:
     required: false
     description: 'Optional. If set and get_app_name is true, this prefix will be added to each app name.'
+  app_name_overrides:
+    required: false
+    description: 'Optional. Newline-separated list of explicit app name mappings in "path:name" format. Use "path:" for prefix-only (no suffix). Overrides default segment extraction for matched paths.'
 
 outputs:
   matrix:
@@ -55,6 +58,20 @@ runs:
         PATH_LEVEL="${{ inputs.path_level || '' }}"
         GET_APP_NAME="${{ inputs.get_app_name || 'false' }}"
         APP_NAME_PREFIX="${{ inputs.app_name_prefix || '' }}"
+        APP_NAME_OVERRIDES="${{ inputs.app_name_overrides || '' }}"
+
+        # Parse app_name_overrides into associative array
+        declare -A NAME_OVERRIDES
+        if [[ -n "$APP_NAME_OVERRIDES" ]]; then
+          echo "Parsing app name overrides..."
+          while IFS= read -r line; do
+            [[ -z "$line" ]] && continue
+            OVERRIDE_PATH="${line%%:*}"
+            OVERRIDE_NAME="${line#*:}"
+            NAME_OVERRIDES["$OVERRIDE_PATH"]="$OVERRIDE_NAME"
+            echo "  Override: $OVERRIDE_PATH -> '${OVERRIDE_NAME:-<prefix-only>}'"
+          done <<< "$APP_NAME_OVERRIDES"
+        fi
 
         if [[ -z "$FILES" ]]; then
           echo "No files changed."
@@ -82,6 +99,8 @@ runs:
           FILTERED=""
           while read -r DIR; do
             for FILTER in "${FILTER_ARRAY[@]}"; do
+              # Skip empty filters (from trailing newlines in YAML)
+              [[ -z "$FILTER" ]] && continue
               if [[ "$DIR" == "$FILTER"* ]]; then
                 FILTERED+="$DIR"$'\n'
                 break
@@ -107,11 +126,34 @@ runs:
           MATRIX="["
           FIRST=true
           while read -r DIR; do
-            if [[ -n "$APP_NAME_PREFIX" ]]; then
-              APP_NAME="${APP_NAME_PREFIX}-$(echo "$DIR" | cut -d'/' -f2)"
+            # Check if there's an explicit override for this path
+            if [[ -n "${NAME_OVERRIDES[$DIR]+set}" ]]; then
+              OVERRIDE_VALUE="${NAME_OVERRIDES[$DIR]}"
+              if [[ -z "$OVERRIDE_VALUE" ]]; then
+                # Empty override means use prefix only (no suffix)
+                APP_NAME="$APP_NAME_PREFIX"
+                echo "  Using override for $DIR: prefix-only -> $APP_NAME"
+              else
+                # Use prefix + override value
+                if [[ -n "$APP_NAME_PREFIX" ]]; then
+                  APP_NAME="${APP_NAME_PREFIX}-${OVERRIDE_VALUE}"
+                else
+                  APP_NAME="$OVERRIDE_VALUE"
+                fi
+                echo "  Using override for $DIR: $APP_NAME"
+              fi
             else
-              APP_NAME="$(echo "$DIR" | cut -d'/' -f2)"
+              # No override - extract app name from second path segment
+              EXTRACTED_NAME="$(echo "$DIR" | cut -d'/' -f2)"
+
+              # Apply prefix if set
+              if [[ -n "$APP_NAME_PREFIX" ]]; then
+                APP_NAME="${APP_NAME_PREFIX}-${EXTRACTED_NAME}"
+              else
+                APP_NAME="$EXTRACTED_NAME"
+              fi
             fi
+
             ENTRY="{\"name\":\"$APP_NAME\",\"working_dir\":\"$DIR\"}"
             if $FIRST; then
               MATRIX+="$ENTRY"
