@@ -38,7 +38,10 @@ runs:
       id: changed
       shell: bash
       run: |
-        if [[ "${{ github.event.before }}" == "0000000000000000000000000000000000000000" ]] || [[ -z "${{ github.event.before }}" ]]; then
+        if [[ "${{ github.event_name }}" == "pull_request" || "${{ github.event_name }}" == "pull_request_target" ]]; then
+          # For PRs, diff between the base branch and current HEAD
+          FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} HEAD)
+        elif [[ "${{ github.event.before }}" == "0000000000000000000000000000000000000000" ]] || [[ -z "${{ github.event.before }}" ]]; then
           # For tags or when before is not available, compare with the previous commit
           PREV_COMMIT=$(git rev-parse HEAD^)
           if [[ $? -eq 0 ]]; then
